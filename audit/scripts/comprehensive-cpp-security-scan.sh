@@ -34,10 +34,8 @@ if command -v osv-scanner &> /dev/null; then
 fi
 # 3. License analysis
 echo "3. Analyzing licenses..."
-syft packages dir:"$PROJECT_DIR" \
-    -o template=licenses.tmpl > "$OUTPUT_DIR/licenses/detected-licenses.txt"
-# Create license template if not exists
-cat > licenses.tmpl << 'EOF'
+# Create license template before invoking syft (syft 1.39 requires -t path)
+cat > "$OUTPUT_DIR/licenses/licenses.tmpl" << 'EOF'
 {{- range .Artifacts}}
 {{- if .Licenses}}
 Package: {{.Name}}@{{.Version}}
@@ -47,6 +45,9 @@ License: {{.}}
 {{- end}}
 {{- end}}
 EOF
+syft packages dir:"$PROJECT_DIR" \
+    -o template -t "$OUTPUT_DIR/licenses/licenses.tmpl" \
+    > "$OUTPUT_DIR/licenses/detected-licenses.txt"
 # 4. Binary analysis for additional security insights
 echo "4. Performing binary security analysis..."
 find "$PROJECT_DIR" -type f -executable | while read binary; do
@@ -91,10 +92,13 @@ if command -v cppcheck &> /dev/null; then
 fi
 # 6. Dependency confusion check
 echo "6. Checking for dependency confusion risks..."
-python3 << 'EOF' > "$OUTPUT_DIR/dependency-confusion-check.py"
+cat > "$OUTPUT_DIR/dependency-confusion-check.py" << 'EOF'
 import json
 import sys
 import re
+import os
+output_dir = os.environ.get("OUTPUT_DIR", ".")
+project_dir = os.environ.get("PROJECT_DIR", ".")
 def check_dependency_confusion(sbom_file):
     """Check for potential dependency confusion attacks"""
     risks = []
@@ -129,8 +133,8 @@ def check_dependency_confusion(sbom_file):
         return []
     return risks
 if __name__ == "__main__":
-    risks = check_dependency_confusion("$OUTPUT_DIR/sboms/complete.cyclonedx.json")
-    with open("$OUTPUT_DIR/dependency-confusion-risks.json", 'w') as f:
+    risks = check_dependency_confusion(f"{output_dir}/sboms/complete.cyclonedx.json")
+    with open(f"{output_dir}/dependency-confusion-risks.json", 'w') as f:
         json.dump(risks, f, indent=2)
     if risks:
         print("⚠️  Potential dependency confusion risks found:")
@@ -139,7 +143,7 @@ if __name__ == "__main__":
     else:
         print("✓ No obvious dependency confusion risks detected")
 EOF
-python3 "$OUTPUT_DIR/dependency-confusion-check.py"
+OUTPUT_DIR="$OUTPUT_DIR" PROJECT_DIR="$PROJECT_DIR" python3 "$OUTPUT_DIR/dependency-confusion-check.py"
 # 7. Generate compliance report
 echo "7. Generating compliance report..."
 cat > "$OUTPUT_DIR/compliance/compliance-report.md" << EOF
