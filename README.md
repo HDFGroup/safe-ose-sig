@@ -33,6 +33,7 @@ See:
 - [GOVERNANCE.md](./GOVERNANCE.md) — roles, decision-making, and lifecycle.
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — how to get involved.
 - [SECURITY.md](./SECURITY.md) — coordinated vulnerability disclosure.
+- [POLICIES](./policy/README.md) — policies governing the HDF5 library, file format, and extensions
 
 ## Meetings
 
@@ -48,3 +49,7 @@ once established.
 Textual content in this repository is provided under the
 [Creative Commons Attribution 4.0 (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/)
 license unless otherwise noted.
+
+## Disclaimer
+
+> This material is based upon work supported by the National Science Foundation under Federal Award No. 2534078. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.
