@@ -48,6 +48,7 @@ Our primary goal is to keep HDF5 files, tools, and workflows out of unsafe state
 - **Availability:** files and tools should fail safe, remain recoverable where possible, and avoid cascading breakage.
 - **In-memory safety:** internal structures should not drift into states that cause wrong writes, wrong frees, or silent corruption.
 - **Privacy protection:** metadata, logs, temporary artifacts, and extension behavior should not leak sensitive information.
+- **Long-term interpretability:** files designated for retention remain readable and semantically interpretable for their retention horizon, either directly or through a preserved fallback path.
 
 ## 2) HDF5 Control System (H5CS) model
 
@@ -68,8 +69,8 @@ flowchart LR
 
 ### What matters in practice
 
-- **Controllers:** application code, HDF5 API layers, metadata cache, free-space manager, chunk cache, plugin loaders, and parts of the OS or filesystem stack that influence persistence.
-- **Control actions:** emit durable bytes, mark dirty or clean, evict entries, reuse free space, parse structures, load extensions, and signal durability.
+- **Controllers:** application code, HDF5 API layers, metadata cache, free-space manager, chunk cache, plugin loaders, parts of the OS or filesystem stack that influence persistence, archive curator, package/distribution manager, plugin registry, signing/CA infrastructure, and integrator.
+- **Control actions:** emit durable bytes, mark dirty or clean, evict entries, reuse free space, parse structures, load extensions, and signal durability, record dependency manifest, archive plugin artifact, verify compatibility, transcode to archival profile, and revalidate/migrate before support ends.
 - **Controlled state:** on-disk metadata and raw data, in-memory caches and indices, in-flight writes, temporary files, logs, and plugin search paths.
 - **Feedback:** return codes, error stacks, file locking outcomes, validation results, checksums, reopen behavior, and monitoring signals.
 
@@ -119,6 +120,9 @@ Describe hazards as state conditions, not events. Good hazard statements look li
 - in-memory state diverges from disk without a safe replay or repair path
 - durability-signaling actions can complete before required bytes are actually safe
 - sensitive metadata can escape through logs or artifacts
+- the file requires an external decoder that is unavailable or unverifiable
+- plugin semantics are required but not durably recorded
+- a compatible decoder exists but cannot be rebuilt or trusted
 
 ### Step 3 - Enumerate unsafe control actions
 
@@ -210,6 +214,16 @@ Record the hazard in the register and tag it with one or more SSP categories fro
 - Common tags: **PRV**, **OPS**
 - Typical controls: logging review, redaction guidance, safe defaults for traces and dumps, artifact retention controls
 
+### Example 5 - Long-term interpretability failure
+
+**Scenario:** A filter/VOL/VFD is required to interpret retained data, but the artifact, source, key chain, or compatible runtime is no longer available.
+
+- Trigger: time passes, dependencies rot, or the artifact is lost or compromised
+- Unsafe state: the file cannot be interpreted or trusted for its retention horizon
+- Loss: data becomes inaccessible or unreliable, even if the bytes are still there
+- Common tags: **FMT**, **EXT**, **TCD**, **SCD**, **UNK**
+- Typical controls: durable recording of plugin semantics, fallback to archival profiles, artifact preservation guidance, monitoring for vulnerable dependencies
+
 ## 5) Hazard register template
 
 Use this template for entries in the hazard register, including updates to [audit/registry/safety-hazards](../audit/registry/safety-hazards).
@@ -261,18 +275,19 @@ Use the hazard families below as the safety vocabulary, then tag each finding wi
 | **H6** | Parser ambiguity | Weak validation or underspecified interpretation allows malformed or divergent parses. |
 | **H7** | Extension boundary violation | A filter, VOL, VFD, wrapper, or plugin violates assumptions that the core library depends on. |
 | **H8** | Operational, privacy, or supply-chain exposure | Misconfiguration, artifact leakage, unsafe deployment, or compromised distribution introduces a safety-relevant hazard. |
+| **H9** | External dependency failure | Correct interpretation of a retained HDF5 file depends on external code, artifacts, keys, or build context that later becomes unavailable, unverifiable, or incompatible. |
 
 ### Alignment table
 
 | Vulnerability category | What it looks like in a safety review | Hazard families most often involved |
 | --- | --- | --- |
-| **FMT** (File format) | malformed or partially persisted file structures, dangling references, ambiguous parsing, weak integrity checks | H1, H2, H6 |
+| **FMT** (File format) | malformed or partially persisted file structures, dangling references, ambiguous parsing, weak integrity checks, plugin semantics needed to interpret stored bytes | H1, H2, H6, H9 |
 | **LIB** (Core Library) | memory safety faults, cache or free-space logic errors, wrong durability semantics, unsafe internal defaults | H2, H3, H4, H5 |
-| **EXT** (Extensions/plugins) | filters, VOLs, VFDs, or wrappers producing invalid state or loading unsafe code paths | H7, H8 |
-| **TCD** (Toolchain/deps) | dependency flaws, wrapper behavior drift, unpinned toolchains, build-time semantic changes | H5, H7, H8 |
-| **OPS** (Operational/usage) | unsafe sharing modes, weak locking, durability misunderstandings, bad deployment assumptions | H2, H3, H8 |
+| **EXT** (Extensions/plugins) | filters, VOLs, VFDs, or wrappers producing invalid state or loading unsafe code paths | H7, H8, H9 |
+| **TCD** (Toolchain/deps) | dependency flaws, wrapper behavior drift, unpinned toolchains, build-time semantic changes | H5, H7, H8, H9 |
+| **OPS** (Operational/usage) | unsafe sharing modes, weak locking, durability misunderstandings, bad deployment assumptions | H2, H3, H8, H9 |
 | **PRV** (Privacy-specific) | metadata leakage, unsafe logging, retained debug artifacts, traceability surprises | H8 |
-| **SCD** (Supply Chain/dist.) | unsigned or compromised binaries, plugin path hijacking, unsafe distribution channels | H7, H8 |
+| **SCD** (Supply Chain/dist.) | unsigned or compromised binaries, plugin path hijacking, unsafe distribution channels | H7, H8, H9 |
 | **UNK** (Unknown) | newly discovered or not-yet-classified hazard chains | any |
 
 ## 7) Checklists for reviewers

@@ -23,7 +23,7 @@ search:
   previews: 3
 
 # Footer
-footer_content: "Copyright &copy; The HDF Group. Distributed under the <a href=\"https://github.com/HDFGroup/hdf5/blob/develop/LICENSE\">BSD License</a>."
+footer_content: "Copyright &copy; 2006 The HDF Group. Distributed under the <a href=\"https://github.com/HDFGroup/hdf5/blob/develop/LICENSE\">BSD License</a>.<br>This material is based upon <a href=\"https://www.hdfgroup.org/projects/hdf5-shines/\">work</a> supported by the U.S. National Science Foundation under Federal Award No. 2534078. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation."
 
 # Back to top link
 back_to_top: true
