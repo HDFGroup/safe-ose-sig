@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "title": "H5Policy control-evidence import contract",
+  "producer": {
+    "repository": "HDFGroup/hdf5-pickles",
+    "contract_path": "registry/ssp-control-evidence.yml",
+    "validator": "tools/check_ssp_control_evidence.py"
+  },
+  "consumer": {
+    "purpose": "Technical evidence for SSP audit; it does not by itself establish full control conformance.",
+    "release_import_requirements": [
+      "pin the producer commit and SHA-256 of the imported contract",
+      "record the libhdf5 version from the contract measurement",
+      "store the checker result with the release evidence",
+      "review residual control evidence not covered by the mapping"
+    ]
+  },
+  "controls": [
+    "HDF5-SHINES-VULN-04",
+    "HDF5-SHINES-TEST-01",
+    "HDF5-SHINES-TEST-05",
+    "HDF5-SHINES-HARD-04",
+    "HDF5-SHINES-TM-03"
+  ]
+}

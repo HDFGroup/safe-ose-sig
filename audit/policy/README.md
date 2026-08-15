@@ -1,11 +1,5 @@
 # Policy
 
-Drop project/organization policies here (MD/PDF) and link them from `index.md`.
+Project and organization policy evidence is linked here.
 
-Suggested:
-
-- Secure SDLC & code review
-- Dependency & licensing
-- Vulnerability management & disclosure (PSIRT)
-- Release & change control
-- Incident response & evidence retention
+- [H5Policy control-evidence contract](H5Policy%20Control%20Evidence%20Contract.md)
