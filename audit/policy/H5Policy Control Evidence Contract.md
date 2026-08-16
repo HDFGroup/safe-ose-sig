@@ -21,6 +21,13 @@ audit.
 
 ## Importing evidence for a release
 
+Use `audit/scripts/import_h5policy_evidence.py <component> <version>`, which
+performs the steps below and additionally asserts that the contract's measured
+`libhdf5_version` equals `<version>`, so evidence measured against one release
+cannot be filed under another. It writes into
+`proofs/<component>/<version>/control-evidence/`. Point it at the producer
+repository with `$HDF5_PICKLES_DIR` (or check it out as a sibling directory).
+
 For a release audit, copy the checked producer contract into the relevant
 `proofs/<component>/<version>/` evidence bundle and record:
 

@@ -5,7 +5,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENTS = ["hdf5-core", "hdfview"]
-MUST_HAVE = ["release-bundle", "sbom", "sca", "change-control", "psirt"]
+MUST_HAVE = ["release-bundle", "sbom", "sca", "change-control", "psirt",
+             "control-evidence"]
 
 def require(path: Path, label: str) -> bool:
     if not path.exists():
