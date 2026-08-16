@@ -4,6 +4,8 @@ This document defines a *security* threat model for the HDF5 library and file fo
 
 **Reference:** [https://dl.acm.org/doi/full/10.1145/3731599.3767556](https://dl.acm.org/doi/full/10.1145/3731599.3767556)
 
+**Related evidence:** Recent model-loading work, including [*On the (In)Security of Loading Machine Learning Models*](https://arxiv.org/abs/2509.06703), shows that a file format being data-based does not by itself establish a security boundary. For HDF5 SSP, HDF5-backed model files, weight files, converters, and framework loaders should be modeled as application-level interpreters when they reconstruct model objects, layers, callables, external references, or other executable-adjacent state. See also the [Keras security advisories](https://github.com/keras-team/keras/security) for examples involving legacy HDF5 model loading and HDF5 external storage in model workflows.
+
 ## Contents
 
 - [1) Scope and security goals](#1-scope-and-security-goals)
@@ -22,6 +24,7 @@ This document defines a *security* threat model for the HDF5 library and file fo
 - Core HDF5 library (parsing, APIs, caching, SWMR, etc.)
 - Extension points (VOL connectors, VFDs, filters, language bindings, tools)
 - Build/distribution and “how users actually get HDF5” (packages, containers, CI outputs)
+- HDF5-backed model and weight artifacts when HDF5 bytes are interpreted by higher-level loaders such as ML frameworks, converters, notebooks, services, or model hubs
 - Typical deployments: desktop, HPC, cloud object stores, embedded/edge workflows
 
 ### Primary security goals (what we defend)
@@ -30,6 +33,8 @@ This document defines a *security* threat model for the HDF5 library and file fo
 - **Availability**: reading/writing does not allow easy denial of service or resource exhaustion
 - **Confidentiality** (where relevant): prevent unauthorized disclosure via security weaknesses
 - **Execution safety**: parsing untrusted inputs must not lead to arbitrary code execution
+- **Interpretation safety**: higher-level loaders must not reconstruct executable objects, model layers, or external-resource accesses from HDF5 content without explicit trust and containment
+- **Trust-signal clarity**: file extensions, “safe” modes, scanner labels, and format names must not overstate the controls actually enforced on a given loading path
 - **Supply chain integrity**: users can verify what code they are running
 
 ## 2) CASSE model
@@ -43,6 +48,8 @@ CASSE classifies attacks by combining:
 - **Source**: `Data` or `Library`
 - **Method**: `Modification` or `Poisoning`
 - **Target**: one of `Core library`, `Application`, `Storage`, `System`, `External libraries`
+
+For HDF5 SSP, a `Data` source includes ordinary HDF5 files, HDF5-backed model files, weight files, archives, and model-hub bundles. An `Application` target includes framework loaders and converters that transform HDF5 content or metadata into object graphs, model layers, callables, filesystem reads, network accesses, or generated code.
 
 So an attack label looks like: **Data • Poisoning • Core library**.
 
@@ -173,6 +180,8 @@ Document:
 - what inputs are **untrusted**
 - where plugins may be loaded from
 - where data may cross trust boundaries (internet, shared FS, object store)
+- whether HDF5 artifacts are treated as passive data, active model artifacts, or partially executable configuration
+- which user-facing security claims apply to which formats and loader paths
 - which workloads must remain available (HPC job, cloud service, device)
 
 ### Step 1 — Build the DFD + identify trust boundaries
@@ -193,6 +202,7 @@ Focus on:
 Start with the highest-risk combinations (typical for DMLs):
 
 - **Data • Poisoning • Core library**
+- **Data • Poisoning • Application** (for example, model/object loaders that reconstruct code-bearing state from file content)
 - **Data • Poisoning • External libraries**
 - **Library • Poisoning • Application/System/Storage**
 - **Data • Poisoning • Storage** (DML-controlled I/O patterns can DoS backends)
@@ -201,8 +211,10 @@ Start with the highest-risk combinations (typical for DMLs):
 
 For each attack, record:
 
-- which **CWE-like weakness** it uses (bounds errors, integer overflows, improper validation, unsafe deserialization, etc.)
-- which components are affected (format parser, filter pipeline, plugin loader, tool)
+- which **CWE-like weakness** it uses (bounds errors, integer overflows, improper validation, unsafe deserialization, confused-deputy file access, etc.)
+- which components are affected (format parser, filter pipeline, plugin loader, tool, framework loader, converter)
+- which loader/interpreter semantics are relevant (object reconstruction, Lambda/custom layer resolution, external storage or link traversal, dynamic import, asset loading)
+- whether a user-facing “safe” mode, scanner label, extension, or format name is an enforceable boundary or only advisory feedback
 - how to reproduce (test case, fuzz seed, PoC file)
 - expected impact and exploitability (rough triage is fine at first)
 
@@ -215,8 +227,8 @@ The HDF5 SSP SIG uses categories spanning the stack (FMT, LIB, EXT, TCD, OPS, PR
 Threat modeling is only “done” when we create:
 
 - mitigations (code changes, defaults, policies, docs)
-- regression tests (fuzz seeds, negative tests, signature checks)
-- operational guidance (hardening options, safe configs)
+- regression tests (fuzz seeds, negative tests, signature checks, legacy-format checks, “safe mode is enforced or rejected” checks)
+- operational guidance (hardening options, safe configs, containment guidance for untrusted model artifacts)
 
 ## 4) Practical examples
 
@@ -281,6 +293,25 @@ Threat modeling is only “done” when we create:
 - SBOMs + dependency pinning
 - constrained execution environments for high-risk contexts
 
+### Example 5 — Data • Poisoning • Application (LIB/TCD/OPS/SCD)
+
+**Scenario**: An HDF5-backed ML model or weight artifact is downloaded from a model hub, repository, paper supplement, or partner workflow and passed to a framework loader. The framework treats the artifact as more than numeric arrays: it may reconstruct model architecture, Lambda layers, custom objects, asset paths, external references, or other executable-adjacent state. A user may believe the file is safe because it is “data-based,” has an `.h5`/`.hdf5` extension, was scanner-labeled as safe, or was loaded with a flag named like a security boundary.
+
+- Source: Data
+- Method: Poisoning
+- Target: Application, sometimes External libraries and System
+- Likely categories: **LIB**, **TCD**, **OPS**, **SCD**, sometimes **FMT** and **PRV**
+- Typical outcomes: arbitrary code execution, local file disclosure, network access, privilege misuse inside the loader process, or over-trust of an unsupported safety mode
+
+**Mitigations**:
+
+- treat untrusted model artifacts as code, not passive datasets
+- prefer weights-only or constrained operator formats for cross-boundary sharing when feasible
+- load untrusted model artifacts in a sandboxed or separate low-privilege process with a restricted filesystem and network view
+- reject or explicitly warn on legacy/self-contained model formats when the requested security mode cannot be enforced
+- preflight inspect HDF5 artifacts for external links, external storage, unexpected plugin/filter requirements, object-like metadata, and path-bearing attributes before full framework loading
+- test each supported file extension and legacy path to verify that security flags, scanner labels, and policy checks fail closed rather than being silently ignored
+
 ## 5) Attack register template
 
 ```markdown
@@ -290,8 +321,11 @@ Threat modeling is only “done” when we create:
 - Preconditions:
 - Trigger / entry point:
 - Vulnerability mechanism (CWE-style):
+- Loader / interpreter semantics: <raw arrays|metadata parser|plugin load|object reconstruction|model graph|external reference|unknown>
+- User-facing trust signal: <extension|safe mode|scanner label|signature|provenance|none>
 - Expected impact:
 - Exploitability notes:
+- Isolation / privilege context:
 - Detection:
 - Mitigations:
 - Tests / evidence:
@@ -304,13 +338,13 @@ Use this table to tag each threat (many threats span multiple categories):
 
 | Vulnerability category | What to look for in a security review | CASSE targets most often affected |
 | --- | --- | --- |
-| **FMT** (File format) | ambiguous specs, crafted structures, pointer/offset abuse, malformed metadata | Core library, Storage |
-| **LIB** (Core library) | memory safety bugs, UB, race conditions, insecure defaults, parsing hot paths | Core library, System |
+| **FMT** (File format) | ambiguous specs, crafted structures, pointer/offset abuse, malformed metadata, external references, format features interpreted by application loaders | Core library, Application, Storage |
+| **LIB** (Core library) | memory safety bugs, UB, race conditions, insecure defaults, parsing hot paths, unsafe reconstruction/deserialization paths in library-adjacent loaders | Core library, Application, System |
 | **EXT** (Extensions/plugins) | plugin hijacking, unsafe filters/VOL/VFD, covert channels, privilege misuse | External libraries, System, Storage |
-| **TCD** (Toolchain/deps) | vulnerable deps, unpinned builds, insecure build scripts, wrapper flaws | Application, External libraries, System |
-| **OPS** (Operational/usage) | misconfigurations, unsafe file sharing, logging leaks, missing access controls | Application, Storage |
-| **PRV** (Privacy-specific) | security weaknesses that enable disclosure (distinct from accidental exposure) | Core library, Application, External |
-| **SCD** (Supply chain/dist.) | unsigned artifacts, typosquatting, compromised repos, provenance gaps | System, Application |
+| **TCD** (Toolchain/deps) | vulnerable deps, unpinned builds, insecure build scripts, wrapper flaws, ML framework loader behavior, converter drift | Application, External libraries, System |
+| **OPS** (Operational/usage) | misconfigurations, unsafe file sharing, logging leaks, missing access controls, over-trust of safe flags or scanner labels, loading untrusted model artifacts without containment | Application, Storage |
+| **PRV** (Privacy-specific) | security weaknesses that enable disclosure, including external-reference reads and artifact metadata disclosure (distinct from accidental exposure) | Core library, Application, External |
+| **SCD** (Supply chain/dist.) | unsigned artifacts, typosquatting, compromised repos, model-hub provenance gaps, unverified shared artifacts | System, Application |
 | **UNK** (Unknown) | novel vulnerability classes, cross-layer chains | Any |
 
 ## 7) Checklist for reviewers
@@ -326,6 +360,14 @@ Use this table to tag each threat (many threats span multiple categories):
 - [ ] document trust assumptions
 - [ ] provide a safe default (deny/allow list) for high-risk contexts
 - [ ] add tests for path hijack and “fail closed” behavior
+
+### When a change touches model artifacts, object loaders, converters, or user-facing security claims
+
+- [ ] Does the loader interpret HDF5 content as model architecture, object graphs, callables, asset paths, or external references rather than only numeric arrays?
+- [ ] Are legacy and current formats covered by the same security controls, or does an unsupported path fail closed with an explicit error or warning?
+- [ ] Can any `safe_mode`, scanner label, signature, or extension-based decision be silently ignored on a supported path?
+- [ ] Are external links, external storage, object-like metadata, custom objects, Lambda layers, dynamic imports, and plugin requirements disabled, constrained, or explicitly reviewed for untrusted artifacts?
+- [ ] Is process isolation recommended or required for model artifacts from outside the trust boundary?
 
 ### When a change touches distribution
 
