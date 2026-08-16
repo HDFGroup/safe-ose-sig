@@ -1,0 +1,21 @@
+{
+  "imported_at": "2026-08-15T23:36:56Z",
+  "producer_repository": "HDFGroup/hdf5-pickles",
+  "producer_commit": "cab1dff72f35c328dec863aa87373f269a9e0970",
+  "producer_worktree_dirty": false,
+  "contract_path": "registry/ssp-control-evidence.yml",
+  "contract_sha256": "60d6ac57ab5ed12ed84528ecd15f667846e77b383ffaf430170fc0e96bdffaad",
+  "libhdf5_version": "2.2.0",
+  "release_component": "hdf5-core",
+  "release_version": "2.2.0",
+  "controls": [
+    "HDF5-SHINES-HARD-04",
+    "HDF5-SHINES-TEST-01",
+    "HDF5-SHINES-TEST-05",
+    "HDF5-SHINES-TM-03",
+    "HDF5-SHINES-VULN-04"
+  ],
+  "row_count": 6,
+  "checker": "tools/check_ssp_control_evidence.py",
+  "checker_exit": 0
+}

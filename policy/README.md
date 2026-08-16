@@ -65,6 +65,12 @@ Example: **HDF5-SHINES-SDLC‑01**.
 
 > **TODO:** Hyperlink into the documents
 
+Machine-checked HDF5 metadata-validation evidence for selected VULN, TEST,
+HARD, and TM controls is governed by the
+[`h5policy` control-evidence contract](../audit/policy/H5Policy%20Control%20Evidence%20Contract.md).
+It supplements—rather than replaces—the release and governance evidence named
+in this table.
+
 | Control ID | Where to find evidence (pointers) |
 | ---------- | --------------------------------- |
 | HDF5-SHINES-SDLC‑01   | GitHub branch protection settings; required status checks; merge rules; PR history      |

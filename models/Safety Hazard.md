@@ -87,6 +87,18 @@ That is why the hazard unit in this model is:
 
 > **Trigger -> Unsafe state -> Loss**
 
+### Note - misleading safety and security feedback
+
+A security-sounding file extension, `safe_mode`, scanner label, signature status, or hub label is feedback in the control system. It becomes safety-relevant when the feedback causes an operator, wrapper, framework, or workflow to choose a more dangerous control action than it otherwise would: for example, loading an untrusted HDF5-backed model artifact in a privileged Python process because the file appears to be data-only or because a security flag appears to apply.
+
+For HDF5 SSP reviews, treat this as an unsafe feedback hazard:
+
+- Trigger: a user-facing trust signal is present, ambiguous, unsupported for a legacy path, or produced by a scanner with incomplete format coverage
+- Unsafe state: the workflow believes an artifact is constrained while the active loader can still reconstruct objects, execute code-bearing state, follow external references, load plugins, or disclose local files
+- Loss: code execution, privacy breach, corrupted workflow output, service compromise, or unsafe redistribution of a malicious artifact
+- Common tags: **LIB**, **TCD**, **OPS**, **SCD**, and sometimes **FMT** or **PRV**
+- Typical controls: make trust signals format-specific, fail closed when a security mode cannot be enforced, document what each flag or label does not cover, and require isolation for untrusted model or object artifacts
+
 ## 3) Hazard enumeration workflow
 
 Use this workflow for each subsystem, feature, or design change.
@@ -274,7 +286,7 @@ Use the hazard families below as the safety vocabulary, then tag each finding wi
 | **H5** | In-memory structural corruption | Internal tables, caches, lists, or indices drift into a state that causes wrong reads, writes, or frees. |
 | **H6** | Parser ambiguity | Weak validation or underspecified interpretation allows malformed or divergent parses. |
 | **H7** | Extension boundary violation | A filter, VOL, VFD, wrapper, or plugin violates assumptions that the core library depends on. |
-| **H8** | Operational, privacy, or supply-chain exposure | Misconfiguration, artifact leakage, unsafe deployment, or compromised distribution introduces a safety-relevant hazard. |
+| **H8** | Operational, privacy, or supply-chain exposure | Misconfiguration, misleading trust signals, artifact leakage, unsafe deployment, or compromised distribution introduces a safety-relevant hazard. |
 | **H9** | External dependency failure | Correct interpretation of a retained HDF5 file depends on external code, artifacts, keys, or build context that later becomes unavailable, unverifiable, or incompatible. |
 
 ### Alignment table
@@ -323,6 +335,7 @@ Use the hazard families below as the safety vocabulary, then tag each finding wi
 ### When a change touches metadata, logging, or artifacts
 
 - [ ] Could names, attributes, provenance, debug traces, or temporary files expose sensitive information?
+- [ ] Do user-facing trust signals such as `safe_mode`, scanner labels, signatures, file extensions, or “safe” badges accurately reflect enforceable controls for this exact format and loader path?
 - [ ] Are logs safe by default for production use?
 - [ ] Are redaction, retention, and cleanup expectations documented?
 - [ ] Does added telemetry avoid creating a new privacy or operational hazard?

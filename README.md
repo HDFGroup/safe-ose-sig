@@ -30,6 +30,7 @@ See:
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — how to get involved.
 - [`SECURITY.md`](./SECURITY.md) — coordinated vulnerability disclosure.
 - [POLICIES](./policy/README.md) — policies governing HDF5 and other HDF Group software.
+- [H5Policy integration](./docs/h5policy-integration.md) — goals and trajectory of the machine-checked technical-evidence bridge to [`hdf5-pickles`](https://github.com/HDFGroup/hdf5-pickles).
  
 ## Meetings
  
