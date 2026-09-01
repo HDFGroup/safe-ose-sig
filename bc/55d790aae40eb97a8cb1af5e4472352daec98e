@@ -1,0 +1,19 @@
+"policy/OSPS  -> SHINES Coverage Matrix.md"
+  s_fcdcb96dfe627a::t_7804e36c814822 3-6,14,43-82,100,108,119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bc55d790aae40eb97a8cb1af5e4472352daec98e",
+  "prompts": {},
+  "sessions": {
+    "s_fcdcb96dfe627a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3ef4c3d-a910-456c-9537-34df186fa8cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "M. Scot Breitenfeld <brtnfld@hdfgroup.org>"
+    }
+  }
+}
