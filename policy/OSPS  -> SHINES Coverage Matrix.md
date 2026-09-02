@@ -1,6 +1,9 @@
 # OSPS → SHINES Coverage Matrix
 
-See [Open Source Project Security (OSPS) Baseline](https://baseline.openssf.org/versions/devel).
+Assessed against [OSPS Baseline **v2026.08.28**](https://baseline.openssf.org/versions/2026.08.28)
+(65 criteria). Original crosswalk 2026-01-16 against the then-development Baseline;
+re-pinned to v2026.08.28 on 2026-09-01. All 62 originally assessed criterion IDs are
+unchanged in v2026.08.28; the three criteria added since are assessed below.
 
 ## Legend
 
@@ -8,7 +11,7 @@ See [Open Source Project Security (OSPS) Baseline](https://baseline.openssf.org/
 * **PARTIAL** = related SHINES evidence exists, but the OSPS requirement isn’t explicit in the evidence pointers
 * **GAP** = no clear SHINES evidence pointer for that OSPS requirement
 
-**Counts:** COVERED **22**, PARTIAL **25**, GAP **15**.
+**Counts:** COVERED **24**, PARTIAL **26**, GAP **15** (of 65 criteria).
 
 ## Gaps at a glance (OSPS controls flagged GAP in the matrix)
 
@@ -37,6 +40,46 @@ These are the places where the evidence-pointer table doesn’t show an obvious 
 * **VEX**
   * OSPS-VM-04.02 (L3) — VEX for non-affecting vulnerabilities
 
+## Assessment notes — criteria added in v2026.08.28 (assessed 2026-09-01)
+
+v2026.08.28 adds three criteria that were not present when the original crosswalk was
+made on 2026-01-16. All 62 previously assessed criterion IDs are unchanged in this
+version, so only the three below required new assessment. Evidence is from
+`HDFGroup/hdf5@develop`.
+
+* **OSPS-BR-01.03 (L1) — COVERED.** `.github/workflows/review-checklist.yml` is the only
+  workflow in the repository using a privileged trigger (`pull_request_target`,
+  `workflow_run`). It sets no `ref:` override, so the checkout always resolves to the base
+  branch and fork code is never checked out or executed; it also sets
+  `persist-credentials: false`, scopes `permissions:` to
+  `pull-requests: write / issues: write / contents: read`, guards on
+  `github.repository == 'HDFGroup/hdf5'`, and pins actions to full commit SHAs. The
+  companion `review-checklist-gather.yml` runs on `pull_request_review` with
+  `permissions: {}`. Repository settings require approval for first-time-contributor fork
+  workflows.
+
+* **OSPS-BR-01.04 (L3) — PARTIAL.** `.github/workflows/zizmor.yml` (added 2026-06-09) runs
+  zizmor static analysis over all user-facing workflows and uploads SARIF to the Security
+  tab, which covers template injection from `workflow_dispatch` inputs. A sweep of the
+  workflow set found no raw `${{ inputs.* }}` interpolation into `run:` shell strings.
+  Rated PARTIAL rather than COVERED because the zizmor step is `continue-on-error: true`,
+  so findings do not gate merges, and detection is not the same as the sanitization and
+  validation the criterion requires.
+
+* **OSPS-DO-07.01 (L2) — COVERED.** `docs/INSTALL_CMake.md` contains a Prerequisites
+  section (CMake 3.26+, supported compilers) and a versioned dependency list with sources
+  (ZLIB, ZLIB-NG, libaec/szip), linked from `README.md` alongside `INSTALL_Windows.md`,
+  `INSTALL_Cygwin.md`, and `README_HPC.md`.
+
+### Flagged for SIG decision — not changed here
+
+`OSPS-BR-01.01` and `OSPS-BR-01.02` (CI/CD input and branch-name sanitization) are both
+rated **GAP**. Those ratings date from 2026-01-16, but `zizmor.yml` landed on 2026-06-09
+and provides the same static-analysis coverage cited above for `OSPS-BR-01.04`. On that
+evidence both look stale and would arguably move to PARTIAL, which would make the counts
+24 / 28 / 13. Re-rating existing controls is left to the SIG rather than folded into this
+change.
+
 ## Access Control (AC)
 
 | OSPS control  | Level | Requirement (from OSPS overview)                                                                               | SHINES control(s)  | Status  |
@@ -54,6 +97,7 @@ These are the places where the evidence-pointer table doesn’t show an obvious 
 | ------------- | ----: | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------- |
 | OSPS-BR-01.01 |     1 | When a CI/CD pipeline accepts an input parameter, that parameter MUST be sanitized and validated prior to use in the pipeline. | HDF5-SHINES-SDLC-05, HDF5-SHINES-BUILD-01                                         | GAP     |
 | OSPS-BR-01.02 |     1 | When a CI/CD pipeline uses a branch name in its functionality, that name value MUST be sanitized and validated prior to use in the pipeline. | HDF5-SHINES-SDLC-05, HDF5-SHINES-BUILD-01                                         | GAP     |
+| OSPS-BR-01.03 |     1 | When a CI/CD pipeline operates on untrusted code snapshots, it MUST prevent access to privileged CI/CD credentials and assets. | HDF5-SHINES-SDLC-05, HDF5-SHINES-BUILD-01                                         | COVERED |
 | OSPS-BR-03.01 |     1 | When the project lists a URI as an official project channel, that URI MUST be exclusively delivered using encrypted channels. | HDF5-SHINES-BUILD-06                                                              | PARTIAL |
 | OSPS-BR-03.02 |     1 | When the project lists a URI as an official distribution channel, that URI MUST be exclusively delivered using encrypted channels. | HDF5-SHINES-BUILD-06                                                              | PARTIAL |
 | OSPS-BR-07.01 |     1 | The project MUST prevent the unintentional storage of unencrypted sensitive data, such as secrets and credentials, in the version control system. | HDF5-SHINES-SDLC-06                                                               | PARTIAL |
@@ -61,6 +105,7 @@ These are the places where the evidence-pointer table doesn’t show an obvious 
 | OSPS-BR-04.01 |     2 | When an official release is created, that release MUST contain a descriptive log of functional and security modifications. | HDF5-SHINES-REL-02, HDF5-SHINES-REL-03                                            | COVERED |
 | OSPS-BR-05.01 |     2 | When a build and release pipeline ingests dependencies, it MUST use standardized tooling where available. | HDF5-SHINES-BUILD-01, HDF5-SHINES-DEP-01                                          | PARTIAL |
 | OSPS-BR-06.01 |     2 | When an official release is created, that release MUST be signed or accounted for in a signed manifest including each asset's cryptographic hashes. | HDF5-SHINES-BUILD-02, HDF5-SHINES-REL-06, HDF5-SHINES-IR-03, HDF5-SHINES-BUILD-03 | COVERED |
+| OSPS-BR-01.04 |     3 | CI/CD pipelines which accept trusted collaborator input MUST sanitize and validate that input prior to use in the pipeline. | HDF5-SHINES-SDLC-05, HDF5-SHINES-BUILD-01                                         | PARTIAL |
 | OSPS-BR-02.02 |     3 | When an official release is created, all assets within that release MUST be clearly associated with the release identifier or another unique identifier for the asset. | HDF5-SHINES-BUILD-02, HDF5-SHINES-REL-02                                          | PARTIAL |
 | OSPS-BR-07.02 |     3 | The project MUST define a policy for managing secrets and credentials used by the project. The policy should include guidelines for storing, accessing, and rotating secrets and credentials. | HDF5-SHINES-CRYPTO-02                                                             | PARTIAL |
 
@@ -71,6 +116,7 @@ These are the places where the evidence-pointer table doesn’t show an obvious 
 | OSPS-DO-01.01 |     1 | When the project has made a release, the project documentation MUST include user guides for all basic functionality. | —                                                              | GAP     |
 | OSPS-DO-02.01 |     1 | When the project has made a release, the project documentation MUST include a guide for reporting defects. | —                                                              | GAP     |
 | OSPS-DO-06.01 |     2 | When the project has made a release, the project documentation MUST include a description of how the project selects, obtains, and tracks its dependencies. | HDF5-SHINES-DEP-01                                             | COVERED |
+| OSPS-DO-07.01 |     2 | The project documentation MUST include instructions on how to build the software, including required libraries, frameworks, SDKs, and dependencies. | HDF5-SHINES-BUILD-01, HDF5-SHINES-DEP-01                       | COVERED |
 | OSPS-DO-03.01 |     3 | When the project has made a release, the project documentation MUST contain instructions to verify the integrity and authenticity of the release assets. | HDF5-SHINES-BUILD-02, HDF5-SHINES-BUILD-03, HDF5-SHINES-REL-06 | COVERED |
 | OSPS-DO-03.02 |     3 | When the project has made a release, the project documentation MUST contain instructions to verify the expected identity of the person or process authoring the software release. | HDF5-SHINES-BUILD-04, HDF5-SHINES-CRYPTO-02                    | PARTIAL |
 | OSPS-DO-04.01 |     3 | When the project has made a release, the project documentation MUST include a descriptive statement about the scope and duration of support for each release. | HDF5-SHINES-COMP-02                                            | COVERED |
